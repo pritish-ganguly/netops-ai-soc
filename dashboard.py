@@ -14,17 +14,12 @@ except ImportError:
 
 
 
-
-
-
 st.set_page_config(
     page_title="NetOps AI SOC",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
-
-
 
 
 
@@ -50,10 +45,6 @@ if "netops_known_ticket_ids" not in st.session_state:
 
 if "netops_last_ticket_notification" not in st.session_state:
     st.session_state.netops_last_ticket_notification = None
-
-
-
-
 
 
 
@@ -166,9 +157,6 @@ if AUTO_REFRESH:
         interval=REFRESH_SECONDS * 1000,
         key="netops_live_refresh",
     )
-
-
-
 
 
 
@@ -352,9 +340,6 @@ def safe_value(row, column, default="UNKNOWN"):
 
 
 
-
-
-
 flow_status, flow_time = component_status(FLOW_PATH)
 ml_status, ml_time = component_status(PREDICTION_PATH)
 
@@ -362,9 +347,6 @@ flows = load_csv(FLOW_PATH)
 predictions = load_csv(PREDICTION_PATH)
 alerts, db_error = load_alert_database(str(DB_PATH))
 tickets, ticket_db_error = load_ticket_database(str(DB_PATH))
-
-
-
 
 
 
@@ -505,8 +487,6 @@ def show_new_ticket_notification(ticket_df):
 
 
 
-
-
 st.markdown(
     """
     <div class="netops-title">🛡️ NetOps AI SOC</div>
@@ -525,8 +505,6 @@ st.caption(
     f"Dashboard refreshed: {datetime.now():%H:%M:%S} "
     f"• Automatic refresh every {REFRESH_SECONDS} seconds"
 )
-
-
 
 
 
@@ -599,8 +577,6 @@ status_card(
 
 
 
-
-
 st.markdown(
     '<div class="section-title">📡 Operations Overview</div>',
     unsafe_allow_html=True,
@@ -632,8 +608,6 @@ cols[5].metric("🟢 Low", f"{low:,}")
 
 
 
-
-
 st.markdown(
     '<div class="section-title">🚨 Security Summary</div>',
     unsafe_allow_html=True,
@@ -652,8 +626,6 @@ summary[0].metric("Total Risk Score", f"{total_risk:,.1f}")
 summary[1].metric("Average Risk", f"{average_risk:,.1f}")
 summary[2].metric("Average ML Confidence", f"{average_confidence:.2f}")
 summary[3].metric("Active Alerts", f"{alert_count:,}")
-
-
 
 
 
@@ -781,8 +753,6 @@ with tab4:
 
 
 
-
-
 st.markdown(
     '<div class="section-title">🎯 Attack Category Distribution</div>',
     unsafe_allow_html=True,
@@ -835,8 +805,6 @@ else:
 
 
 
-
-
 st.markdown(
     '<div class="section-title">🚨 Recent Security Alerts</div>',
     unsafe_allow_html=True,
@@ -870,8 +838,6 @@ else:
         use_container_width=True,
         hide_index=True,
     )
-
-
 
 
 
@@ -1044,8 +1010,6 @@ def load_incident_alert(alert_id, db_path):
     finally:
         if connection is not None:
             connection.close()
-
-
 
 
 
@@ -1725,8 +1689,6 @@ with ticket_tabs[2]:
 
 
 
-
-
 st.markdown(
     '<div class="section-title">🌐 Current Network Flow Data</div>',
     unsafe_allow_html=True,
@@ -1740,8 +1702,6 @@ else:
         use_container_width=True,
         hide_index=True,
     )
-
-
 
 
 
@@ -1761,8 +1721,6 @@ else:
         use_container_width=True,
         hide_index=True,
     )
-
-
 
 
 
@@ -1791,9 +1749,6 @@ with st.expander("System Diagnostics"):
             "Ticket DB Error": ticket_db_error,
         }
     )
-
-
-
 
 
 
