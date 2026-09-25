@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+
+# Runtime data
+data/*.csv
+data/*.db
+data/**/*.db
+data/**/*.sqlite
+data/**/*.sqlite3
+data/test/
+
+# Training datasets
+data/raw/
+data/processed/
+
+# Temporary files
+*.log
+*.tmp
+test_write.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Unused model
+models/random_forest_network_classifier.joblib
+
+# Local development archive
+archive/
+
+# Large trained model - kept locally
+models/random_forest_hybrid_classifier.joblib
