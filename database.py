@@ -4,27 +4,7 @@ from datetime import datetime
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 DATABASE_PATH = "data/netops_alerts.db"
-
-
-
-
 
 
 def get_connection():
@@ -41,10 +21,6 @@ def get_connection():
     connection.execute("PRAGMA busy_timeout = 10000")
 
     return connection
-
-
-
-
 
 
 REQUIRED_COLUMNS = {
@@ -72,9 +48,6 @@ REQUIRED_COLUMNS = {
 
 
 
-
-
-
 def initialize_database():
 
     connection = get_connection()
@@ -82,9 +55,6 @@ def initialize_database():
 
     try:
 
-        
-        
-        
 
         cursor.execute(
             """
@@ -138,8 +108,6 @@ def initialize_database():
         connection.commit()
 
         
-        
-        
 
         existing_columns = {
             row[1]
@@ -165,9 +133,6 @@ def initialize_database():
 
         connection.commit()
 
-        
-        
-        
 
         cursor.execute(
             """
@@ -223,8 +188,6 @@ def initialize_database():
 
 
 
-
-
 def build_alert_key(alert):
 
     source_ip = str(
@@ -269,9 +232,6 @@ def build_alert_key(alert):
 
 
 
-
-
-
 def normalize_alert(alert):
 
     alert = dict(alert)
@@ -304,9 +264,6 @@ def normalize_alert(alert):
 
 
 
-
-
-
 def save_alert(alert):
 
     alert = normalize_alert(alert)
@@ -316,7 +273,6 @@ def save_alert(alert):
 
     try:
 
-        
         
         
 
