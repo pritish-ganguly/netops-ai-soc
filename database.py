@@ -2,10 +2,7 @@ import os
 import sqlite3
 from datetime import datetime
 
-
-
 DATABASE_PATH = "data/netops_alerts.db"
-
 
 def get_connection():
     os.makedirs(
@@ -21,7 +18,6 @@ def get_connection():
     connection.execute("PRAGMA busy_timeout = 10000")
 
     return connection
-
 
 REQUIRED_COLUMNS = {
     "timestamp": "TEXT",
@@ -46,15 +42,12 @@ REQUIRED_COLUMNS = {
     "alert_key": "TEXT",
 }
 
-
-
 def initialize_database():
 
     connection = get_connection()
     cursor = connection.cursor()
 
     try:
-
 
         cursor.execute(
             """
@@ -107,18 +100,12 @@ def initialize_database():
 
         connection.commit()
 
-        
-
         existing_columns = {
             row[1]
             for row in cursor.execute(
                 "PRAGMA table_info(alerts)"
             ).fetchall()
         }
-
-        
-        
-        
 
         for column, column_type in REQUIRED_COLUMNS.items():
 
@@ -132,7 +119,6 @@ def initialize_database():
                 )
 
         connection.commit()
-
 
         cursor.execute(
             """
@@ -185,9 +171,6 @@ def initialize_database():
     print("Alerts table ready.")
     initialize_ticketing()
 
-
-
-
 def build_alert_key(alert):
 
     source_ip = str(
@@ -230,8 +213,6 @@ def build_alert_key(alert):
         ]
     )
 
-
-
 def normalize_alert(alert):
 
     alert = dict(alert)
@@ -262,8 +243,6 @@ def normalize_alert(alert):
 
     return alert
 
-
-
 def save_alert(alert):
 
     alert = normalize_alert(alert)
@@ -272,9 +251,6 @@ def save_alert(alert):
     cursor = connection.cursor()
 
     try:
-
-        
-        
 
         alert_key = alert.get("alert_key")
 
@@ -298,10 +274,6 @@ def save_alert(alert):
                     "id": existing[0],
                     "alert_key": alert_key,
                 }
-
-        
-        
-        
 
         cursor.execute(
             """
@@ -375,11 +347,6 @@ def save_alert(alert):
     finally:
         connection.close()
 
-
-
-
-
-
 def save_alerts(alerts):
 
     inserted = 0
@@ -421,11 +388,6 @@ def save_alerts(alerts):
         "failed": failed,
     }
 
-
-
-
-
-
 def get_database_stats():
 
     connection = get_connection()
@@ -458,11 +420,6 @@ def get_database_stats():
 
     finally:
         connection.close()
-
-
-
-
-
 
 def initialize_ticketing():
 
@@ -507,7 +464,6 @@ def initialize_ticketing():
     finally:
         connection.close()
 
-
 def _ticket_priority(severity):
 
     severity = str(severity or "LOW").upper()
@@ -519,7 +475,6 @@ def _ticket_priority(severity):
         return "P2"
 
     return "P3"
-
 
 def _next_ticket_number(cursor):
 
@@ -546,7 +501,6 @@ def _next_ticket_number(cursor):
             sequence = 1
 
     return f"{prefix}{sequence:05d}"
-
 
 def create_ticket(
     alert_id,
@@ -633,7 +587,6 @@ def create_ticket(
     finally:
         connection.close()
 
-
 def update_ticket(
     ticket_id,
     status=None,
@@ -699,11 +652,6 @@ def update_ticket(
 
     finally:
         connection.close()
-
-
-
-
-
 
 if __name__ == "__main__":
 

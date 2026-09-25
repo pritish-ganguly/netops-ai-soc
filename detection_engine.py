@@ -9,32 +9,6 @@ import pandas as pd
 from database import initialize_database, save_alert, build_alert_key
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 BASE_DIR = Path(__file__).resolve().parent
 
 PREDICTIONS_PATH = (
@@ -52,10 +26,6 @@ ALERTS_PATH = (
 CHECK_INTERVAL = 5
 
 
-
-
-
-
 ML_LOW = 0.60
 ML_HIGH = 0.75
 
@@ -71,20 +41,10 @@ PUBLIC_DESTINATION_SCORE = 5
 MULTICAST_SUPPRESSION_SCORE = 70
 
 
-
-
 MIN_SECURITY_ALERT_RISK = 50
 
 
-
-
-
-
 initialize_database()
-
-
-
-
 
 
 def number(value, default=0.0):
@@ -110,10 +70,6 @@ def integer(value, default=0):
 
     except (TypeError, ValueError):
         return default
-
-
-
-
 
 
 def is_private_ip(ip):
@@ -147,10 +103,6 @@ def is_loopback_ip(ip):
 
     except ValueError:
         return False
-
-
-
-
 
 
 def protocol_context(row):
@@ -212,10 +164,6 @@ def protocol_context(row):
     return "OTHER"
 
 
-
-
-
-
 def determine_attack_category(
     categories,
     context,
@@ -270,10 +218,6 @@ def determine_attack_category(
     return "TRAFFIC_ANOMALY"
 
 
-
-
-
-
 def calculate_severity(risk_score):
 
     risk_score = number(risk_score)
@@ -285,10 +229,6 @@ def calculate_severity(risk_score):
         return "MEDIUM"
 
     return "LOW"
-
-
-
-
 
 
 def calculate_risk(row):
@@ -329,9 +269,6 @@ def calculate_risk(row):
 
     categories = []
 
-    
-    
-    
 
     if confidence >= ML_HIGH:
 
@@ -363,9 +300,6 @@ def calculate_risk(row):
             f"Low ML confidence {confidence:.2f}"
         )
 
-    
-    
-    
 
     if packet_rate >= PACKET_RATE_VERY_HIGH:
 
@@ -393,9 +327,6 @@ def calculate_risk(row):
             f"{packet_rate:.1f}/s"
         )
 
-    
-    
-    
 
     if byte_rate >= BYTE_RATE_HIGH:
 
@@ -410,9 +341,6 @@ def calculate_risk(row):
             f"{byte_rate:.0f}/s"
         )
 
-    
-    
-    
 
     if connection_count >= VERY_REPEATED_CONNECTIONS:
 
@@ -440,9 +368,6 @@ def calculate_risk(row):
             f"({connection_count} connections)"
         )
 
-    
-    
-    
 
     if (
         is_private_ip(src_ip)
@@ -457,9 +382,6 @@ def calculate_risk(row):
             "with public destination"
         )
 
-    
-    
-    
 
     if context in ("MDNS", "SSDP"):
 
@@ -479,9 +401,6 @@ def calculate_risk(row):
             "ICMP traffic observed"
         )
 
-    
-    
-    
 
     if (
         is_multicast_ip(dst_ip)
@@ -493,9 +412,6 @@ def calculate_risk(row):
             MULTICAST_SUPPRESSION_SCORE
         )
 
-    
-    
-    
 
     score = min(
         round(score, 2),
@@ -556,10 +472,6 @@ def calculate_risk(row):
     }
 
 
-
-
-
-
 def load_live_data():
 
     if not PREDICTIONS_PATH.exists():
@@ -616,19 +528,12 @@ def load_live_data():
     return predictions, flows
 
 
-
-
-
-
 def prepare_data(predictions, flows):
 
     predictions = predictions.copy()
 
     flows = flows.copy()
 
-    
-    
-    
 
     if "src_ip" not in predictions.columns:
         return pd.DataFrame()
@@ -636,9 +541,6 @@ def prepare_data(predictions, flows):
     if "dst_ip" not in predictions.columns:
         return pd.DataFrame()
 
-    
-    
-    
 
     predictions["confidence"] = pd.to_numeric(
         predictions.get(
@@ -657,12 +559,6 @@ def prepare_data(predictions, flows):
         .str.upper()
     )
 
-    
-    
-    
-    
-    
-    
 
     identity = [
         "src_ip",
@@ -716,9 +612,6 @@ def prepare_data(predictions, flows):
         )
     )
 
-    
-    
-    
 
     if "confidence_prediction" in merged.columns:
 
@@ -752,9 +645,6 @@ def prepare_data(predictions, flows):
 
         merged["status"] = "NORMAL"
 
-    
-    
-    
 
     numeric_columns = [
         "dur",
@@ -776,11 +666,6 @@ def prepare_data(predictions, flows):
                 errors="coerce"
             ).fillna(0)
 
-    
-    
-    
-    
-    
 
     if "rate" in merged.columns:
 
@@ -793,12 +678,6 @@ def prepare_data(predictions, flows):
 
         merged["packet_rate"] = 0.0
 
-    
-    
-    
-    
-    
-    
 
     if (
         "sload" in merged.columns
@@ -827,9 +706,6 @@ def prepare_data(predictions, flows):
 
         merged["byte_rate"] = 0.0
 
-    
-    
-    
 
     group_columns = [
         column
@@ -880,10 +756,6 @@ def prepare_data(predictions, flows):
     return merged
 
 
-
-
-
-
 def build_alert(row):
 
     status = str(
@@ -894,7 +766,7 @@ def build_alert(row):
         row.get("confidence", 0)
     )
 
-    
+
     if not (
         status == "ATTACK"
         or confidence >= ML_LOW
@@ -903,16 +775,14 @@ def build_alert(row):
 
     risk = calculate_risk(row)
 
-    
-    
+
     if (
         risk["attack_category"] == "NETWORK_DISCOVERY"
         and risk["risk_score"] < MIN_SECURITY_ALERT_RISK
     ):
         return None
 
-    
-    
+
     if (
         status != "ATTACK"
         and risk["risk_score"] < MIN_SECURITY_ALERT_RISK
@@ -944,8 +814,7 @@ def build_alert(row):
         "protocol_context": risk["protocol_context"],
     }
 
-    
-    
+
     alert["alert_key"] = build_alert_key(alert)
 
     return alert
@@ -969,11 +838,7 @@ def process_batch():
         print("[WAIT] No usable live traffic records.")
         return 0, 0, 0
 
-    
-    
-    
-    
-    
+
     unique_alerts = {}
     ignored = 0
     qualifying_rows = 0
@@ -992,7 +857,7 @@ def process_batch():
         if key not in unique_alerts:
             unique_alerts[key] = alert
         else:
-            
+
             existing = unique_alerts[key]
             if alert["risk_score"] > existing["risk_score"]:
                 unique_alerts[key] = alert
@@ -1006,9 +871,7 @@ def process_batch():
     inserted = 0
     duplicates = 0
 
-    
-    
-    
+
     for alert in alerts:
 
         try:
@@ -1035,9 +898,7 @@ def process_batch():
                 error
             )
 
-    
-    
-    
+
     try:
         if alerts:
             pd.DataFrame(alerts).to_csv(
@@ -1055,10 +916,6 @@ def process_batch():
         batch_duplicates + duplicates,
         len(alerts)
     )
-
-
-
-
 
 
 print()
@@ -1099,10 +956,6 @@ print(
 )
 
 
-
-
-
-
 last_prediction_mtime = None
 last_flow_mtime = None
 
@@ -1123,10 +976,6 @@ while True:
             else None
         )
 
-        
-        
-        
-        
 
         changed = (
             prediction_mtime

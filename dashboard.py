@@ -4,14 +4,12 @@ import sqlite3
 
 import pandas as pd
 import streamlit as st
-from database import initialize_ticketing, create_ticket, update_ticket
 
 try:
     from streamlit_autorefresh import st_autorefresh
     AUTO_REFRESH = True
 except ImportError:
     AUTO_REFRESH = False
-
 
 
 st.set_page_config(
@@ -21,14 +19,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-
-
-
-TICKET_NOTIFICATION_CSS = '<style>\n.netops-ticket-toast{position:fixed;top:78px;right:24px;z-index:999999;width:360px;padding:16px 18px;border:1px solid rgba(67,217,255,.35);border-radius:14px;background:linear-gradient(145deg,rgba(13,20,31,.98),rgba(7,12,19,.98));box-shadow:0 18px 55px rgba(0,0,0,.45);color:#edf4ff;animation:netops-ticket-in .35s ease-out;backdrop-filter:blur(12px)}\n.netops-ticket-toast .toast-head{display:flex;align-items:center;gap:9px;font-weight:800;font-size:.88rem;margin-bottom:8px}\n.netops-ticket-toast .toast-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(67,217,255,.12);font-size:16px}\n.netops-ticket-toast .toast-ticket{color:#43d9ff;font-family:monospace;font-size:.78rem;font-weight:700}\n.netops-ticket-toast .toast-title{font-size:.84rem;font-weight:650;margin-bottom:7px}\n.netops-ticket-toast .toast-meta{color:#9aa9bd;font-size:.73rem;line-height:1.5}\n.netops-ticket-toast .toast-priority{display:inline-block;margin-top:9px;padding:4px 8px;border-radius:6px;background:rgba(62,229,139,.10);color:#3ee58b;font-size:.68rem;font-weight:800}\n@keyframes netops-ticket-in{from{opacity:0;transform:translateX(35px) translateY(-8px)}to{opacity:1;transform:translateX(0) translateY(0)}}\n</style>'
-st.markdown(TICKET_NOTIFICATION_CSS, unsafe_allow_html=True)
-INCIDENT_DETAIL_CSS = '\n<style>\n.netops-incident-card{\n    padding:20px;\n    border:1px solid rgba(120,150,190,.20);\n    border-radius:16px;\n    background:linear-gradient(145deg,rgba(15,23,35,.96),rgba(8,14,23,.96));\n    margin:8px 0 18px 0;\n}\n.netops-incident-title{\n    font-size:1.35rem;\n    font-weight:800;\n    margin-bottom:4px;\n}\n.netops-incident-subtitle{\n    color:#91a0b5;\n    font-size:.78rem;\n    margin-bottom:16px;\n}\n.netops-detail-label{\n    color:#8291a6;\n    font-size:.68rem;\n    text-transform:uppercase;\n    letter-spacing:.08em;\n    font-weight:700;\n}\n.netops-detail-value{\n    font-size:.92rem;\n    font-weight:650;\n    margin-top:3px;\n    word-break:break-word;\n}\n.netops-evidence{\n    padding:14px;\n    border-radius:10px;\n    background:rgba(0,0,0,.20);\n    border:1px solid rgba(120,150,190,.12);\n    font-family:monospace;\n    font-size:.78rem;\n    white-space:pre-wrap;\n}\n</style>\n'
-st.markdown(INCIDENT_DETAIL_CSS, unsafe_allow_html=True)
-
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data" / "netops_alerts.db"
 FLOW_PATH = BASE_DIR / "data" / "live_network_flows.csv"
@@ -36,16 +26,6 @@ PREDICTION_PATH = BASE_DIR / "data" / "live_predictions.csv"
 
 REFRESH_SECONDS = 5
 STALE_SECONDS = 20
-
-initialize_ticketing()
-
-
-if "netops_known_ticket_ids" not in st.session_state:
-    st.session_state.netops_known_ticket_ids = None
-
-if "netops_last_ticket_notification" not in st.session_state:
-    st.session_state.netops_last_ticket_notification = None
-
 
 
 st.markdown(
@@ -148,16 +128,11 @@ st.markdown(
 )
 
 
-
-
-
-
 if AUTO_REFRESH:
     st_autorefresh(
         interval=REFRESH_SECONDS * 1000,
         key="netops_live_refresh",
     )
-
 
 
 def get_mtime(path):
@@ -273,53 +248,6 @@ def load_alert_database(path_string):
             connection.close()
 
 
-
-@st.cache_data(ttl=2)
-def load_ticket_database(path_string):
-
-    path = Path(path_string)
-
-    if not path.exists():
-        return pd.DataFrame(), "Database not found"
-
-    connection = None
-
-    try:
-        connection = sqlite3.connect(path, timeout=5)
-
-        df = pd.read_sql_query(
-            """
-            SELECT
-                id,
-                ticket_number,
-                alert_id,
-                title,
-                description,
-                severity,
-                priority,
-                category,
-                status,
-                assigned_to,
-                resolution_notes,
-                created_at,
-                updated_at,
-                resolved_at
-            FROM tickets
-            ORDER BY id DESC
-            """,
-            connection,
-        )
-
-        return df, None
-
-    except Exception as exc:
-        return pd.DataFrame(), str(exc)
-
-    finally:
-        if connection is not None:
-            connection.close()
-
-
 def numeric(df, column):
     if column not in df.columns:
         return pd.Series(dtype=float)
@@ -339,152 +267,12 @@ def safe_value(row, column, default="UNKNOWN"):
     return value
 
 
-
 flow_status, flow_time = component_status(FLOW_PATH)
 ml_status, ml_time = component_status(PREDICTION_PATH)
 
 flows = load_csv(FLOW_PATH)
 predictions = load_csv(PREDICTION_PATH)
 alerts, db_error = load_alert_database(str(DB_PATH))
-tickets, ticket_db_error = load_ticket_database(str(DB_PATH))
-
-
-
-def show_new_ticket_notification(ticket_df):
-
-    if ticket_df is None or ticket_df.empty:
-        return
-
-    if "id" not in ticket_df.columns:
-        return
-
-    current_ids = set(
-        pd.to_numeric(
-            ticket_df["id"],
-            errors="coerce",
-        )
-        .dropna()
-        .astype(int)
-        .tolist()
-    )
-
-    previous_ids = st.session_state.netops_known_ticket_ids
-
-    
-    
-    if previous_ids is None:
-        st.session_state.netops_known_ticket_ids = current_ids
-        return
-
-    new_ids = current_ids - previous_ids
-
-    if new_ids:
-
-        newest_id = max(new_ids)
-
-        rows = ticket_df[
-            pd.to_numeric(
-                ticket_df["id"],
-                errors="coerce",
-            ) == newest_id
-        ]
-
-        if not rows.empty:
-
-            ticket = rows.iloc[0]
-
-            ticket_number = str(
-                safe_value(
-                    ticket,
-                    "ticket_number",
-                    f"NET-{newest_id}",
-                )
-            )
-
-            title = str(
-                safe_value(
-                    ticket,
-                    "title",
-                    "New security incident",
-                )
-            )
-
-            severity = str(
-                safe_value(
-                    ticket,
-                    "severity",
-                    "LOW",
-                )
-            ).upper()
-
-            priority = str(
-                safe_value(
-                    ticket,
-                    "priority",
-                    "P3",
-                )
-            ).upper()
-
-            category = str(
-                safe_value(
-                    ticket,
-                    "category",
-                    "SECURITY",
-                )
-            )
-
-            alert_id = str(
-                safe_value(
-                    ticket,
-                    "alert_id",
-                    "N/A",
-                )
-            )
-
-            toast = f"""
-            <div class="netops-ticket-toast">
-                <div class="toast-head">
-                    <div class="toast-icon">🎫</div>
-                    <div>New Security Ticket</div>
-                </div>
-
-                <div class="toast-ticket">{ticket_number}</div>
-
-                <div class="toast-title">{title}</div>
-
-                <div class="toast-meta">
-                    <strong>Severity:</strong> {severity}
-                    &nbsp; • &nbsp;
-                    <strong>Category:</strong> {category}<br>
-                    <strong>Alert:</strong> #{alert_id}
-                </div>
-
-                <div class="toast-priority">
-                    {priority} • NEW INCIDENT
-                </div>
-            </div>
-            """
-
-            st.markdown(
-                toast,
-                unsafe_allow_html=True,
-            )
-
-            
-            try:
-                st.toast(
-                    f"🎫 {ticket_number} — New {severity} ticket",
-                    icon="🚨" if severity == "HIGH" else "🎫",
-                )
-            except Exception:
-                pass
-
-            st.session_state.netops_last_ticket_notification = newest_id
-
-    st.session_state.netops_known_ticket_ids = current_ids
-
-
-
 
 
 st.markdown(
@@ -505,8 +293,6 @@ st.caption(
     f"Dashboard refreshed: {datetime.now():%H:%M:%S} "
     f"• Automatic refresh every {REFRESH_SECONDS} seconds"
 )
-
-
 
 
 st.markdown(
@@ -575,8 +361,6 @@ status_card(
 )
 
 
-
-
 st.markdown(
     '<div class="section-title">📡 Operations Overview</div>',
     unsafe_allow_html=True,
@@ -606,8 +390,6 @@ cols[4].metric("🟠 Medium", f"{medium:,}")
 cols[5].metric("🟢 Low", f"{low:,}")
 
 
-
-
 st.markdown(
     '<div class="section-title">🚨 Security Summary</div>',
     unsafe_allow_html=True,
@@ -626,8 +408,6 @@ summary[0].metric("Total Risk Score", f"{total_risk:,.1f}")
 summary[1].metric("Average Risk", f"{average_risk:,.1f}")
 summary[2].metric("Average ML Confidence", f"{average_confidence:.2f}")
 summary[3].metric("Active Alerts", f"{alert_count:,}")
-
-
 
 
 st.markdown(
@@ -751,8 +531,6 @@ with tab4:
         st.info("No ML prediction data available.")
 
 
-
-
 st.markdown(
     '<div class="section-title">🎯 Attack Category Distribution</div>',
     unsafe_allow_html=True,
@@ -770,8 +548,7 @@ if not alerts.empty and "attack_category" in alerts.columns:
 
     if not category_counts.empty:
 
-        
-        
+
         category_table = category_counts.rename(
             "Alerts"
         ).reset_index()
@@ -801,8 +578,6 @@ if not alerts.empty and "attack_category" in alerts.columns:
 
 else:
     st.info("Attack category information is not available.")
-
-
 
 
 st.markdown(
@@ -838,8 +613,6 @@ else:
         use_container_width=True,
         hide_index=True,
     )
-
-
 
 
 st.markdown(
@@ -976,719 +749,6 @@ else:
         st.info("No valid alert IDs available.")
 
 
-
-
-
-@st.cache_data(ttl=2)
-def load_incident_alert(alert_id, db_path):
-    connection = None
-
-    try:
-        connection = sqlite3.connect(db_path, timeout=5)
-        tables = pd.read_sql_query(
-            "SELECT name FROM sqlite_master WHERE type='table'",
-            connection,
-        )["name"].tolist()
-
-        if "alerts" not in tables:
-            return None
-
-        row = pd.read_sql_query(
-            "SELECT * FROM alerts WHERE id = ? LIMIT 1",
-            connection,
-            params=(int(alert_id),),
-        )
-
-        if row.empty:
-            return None
-
-        return row.iloc[0]
-
-    except Exception:
-        return None
-
-    finally:
-        if connection is not None:
-            connection.close()
-
-
-
-
-
-st.markdown(
-    '<div class="section-title">🔎 Incident Investigation</div>',
-    unsafe_allow_html=True,
-)
-
-if tickets.empty:
-    st.info("Create or receive a ticket to investigate an incident.")
-else:
-
-    incident_numbers = (
-        tickets["ticket_number"]
-        .dropna()
-        .astype(str)
-        .tolist()
-    )
-
-    selected_incident_number = st.selectbox(
-        "Select Incident",
-        incident_numbers,
-        key="incident_detail_select",
-    )
-
-    incident = tickets[
-        tickets["ticket_number"].astype(str)
-        == selected_incident_number
-    ].iloc[0]
-
-    alert_id_value = safe_value(incident, "alert_id", None)
-
-    alert = None
-
-    try:
-        if alert_id_value is not None and str(alert_id_value) not in {
-            "", "None", "nan", "NaN"
-        }:
-            alert = load_incident_alert(
-                int(float(alert_id_value)),
-                str(DB_PATH),
-            )
-    except (ValueError, TypeError):
-        alert = None
-
-    st.markdown(
-        f"""
-        <div class="netops-incident-card">
-            <div class="netops-incident-title">
-                🎫 {selected_incident_number}
-            </div>
-            <div class="netops-incident-subtitle">
-                {safe_value(incident, "title", "Security Incident")}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    top = st.columns(4)
-
-    top[0].metric(
-        "Status",
-        str(safe_value(incident, "status", "OPEN")).upper(),
-    )
-    top[1].metric(
-        "Severity",
-        str(safe_value(incident, "severity", "LOW")).upper(),
-    )
-    top[2].metric(
-        "Priority",
-        str(safe_value(incident, "priority", "P3")).upper(),
-    )
-    top[3].metric(
-        "Assigned To",
-        str(safe_value(incident, "assigned_to", "SOC Team")),
-    )
-
-    st.markdown("### 🌐 Network Context")
-
-    network_cols = st.columns(4)
-
-    source_ip = "N/A"
-    destination_ip = "N/A"
-    protocol = "N/A"
-    alert_category = str(
-        safe_value(incident, "category", "SECURITY")
-    )
-
-    if alert is not None:
-
-        source_ip = str(
-            safe_value(
-                alert,
-                "source_ip",
-                safe_value(alert, "src_ip", "N/A"),
-            )
-        )
-
-        destination_ip = str(
-            safe_value(
-                alert,
-                "destination_ip",
-                safe_value(alert, "dst_ip", "N/A"),
-            )
-        )
-
-        protocol = str(
-            safe_value(alert, "protocol", "N/A")
-        )
-
-        alert_category = str(
-            safe_value(
-                alert,
-                "attack_category",
-                safe_value(
-                    alert,
-                    "category",
-                    alert_category,
-                ),
-            )
-        )
-
-    network_cols[0].metric("Source IP", source_ip)
-    network_cols[1].metric("Destination IP", destination_ip)
-    network_cols[2].metric("Protocol", protocol)
-    network_cols[3].metric("Category", alert_category)
-
-    st.markdown("### 🤖 ML & Risk Analysis")
-
-    ml_cols = st.columns(4)
-
-    risk_value = safe_value(
-        alert,
-        "risk_score",
-        safe_value(incident, "risk_score", 0)
-        if alert is None else 0,
-    )
-
-    confidence_value = safe_value(
-        alert,
-        "confidence",
-        safe_value(
-            alert,
-            "ml_confidence",
-            0,
-        ),
-    )
-
-    prediction_value = safe_value(
-        alert,
-        "prediction",
-        safe_value(
-            alert,
-            "ml_prediction",
-            "N/A",
-        ),
-    )
-
-    evidence_value = safe_value(
-        alert,
-        "evidence",
-        "No evidence recorded.",
-    )
-
-    ml_cols[0].metric(
-        "Risk Score",
-        str(risk_value),
-    )
-    ml_cols[1].metric(
-        "ML Confidence",
-        str(confidence_value),
-    )
-    ml_cols[2].metric(
-        "Prediction",
-        str(prediction_value),
-    )
-    ml_cols[3].metric(
-        "Alert ID",
-        str(alert_id_value or "N/A"),
-    )
-
-    st.markdown("### 🔍 Detection Evidence")
-
-    st.markdown(
-        f'<div class="netops-evidence">{evidence_value}</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.markdown("### 📝 Incident Description")
-
-    st.text_area(
-        "Incident description",
-        value=str(
-            safe_value(
-                incident,
-                "description",
-                "No description recorded.",
-            )
-        ),
-        height=150,
-        disabled=True,
-        key="incident_description_view",
-    )
-
-    st.markdown("### 👨‍💻 Investigation")
-
-    investigation_notes = st.text_area(
-        "Investigation / Resolution Notes",
-        value=str(
-            safe_value(
-                incident,
-                "resolution_notes",
-                "",
-            )
-        ),
-        height=150,
-        key="incident_investigation_notes",
-    )
-
-    action_cols = st.columns(4)
-
-    with action_cols[0]:
-        detail_status = st.selectbox(
-            "Status",
-            ["OPEN", "INVESTIGATING", "RESOLVED", "CLOSED"],
-            index=(
-                ["OPEN", "INVESTIGATING", "RESOLVED", "CLOSED"].index(
-                    str(
-                        safe_value(
-                            incident,
-                            "status",
-                            "OPEN",
-                        )
-                    ).upper()
-                )
-                if str(
-                    safe_value(
-                        incident,
-                        "status",
-                        "OPEN",
-                    )
-                ).upper()
-                in ["OPEN", "INVESTIGATING", "RESOLVED", "CLOSED"]
-                else 0
-            ),
-            key="incident_detail_status",
-        )
-
-    with action_cols[1]:
-        detail_priority = st.selectbox(
-            "Priority",
-            ["P1", "P2", "P3", "P4"],
-            index=(
-                ["P1", "P2", "P3", "P4"].index(
-                    str(
-                        safe_value(
-                            incident,
-                            "priority",
-                            "P3",
-                        )
-                    ).upper()
-                )
-                if str(
-                    safe_value(
-                        incident,
-                        "priority",
-                        "P3",
-                    )
-                ).upper()
-                in ["P1", "P2", "P3", "P4"]
-                else 2
-            ),
-            key="incident_detail_priority",
-        )
-
-    with action_cols[2]:
-        detail_assignee = st.text_input(
-            "Assigned To",
-            value=str(
-                safe_value(
-                    incident,
-                    "assigned_to",
-                    "SOC Team",
-                )
-            ),
-            key="incident_detail_assignee",
-        )
-
-    with action_cols[3]:
-        st.write("")
-        st.write("")
-        save_incident = st.button(
-            "💾 Save Investigation",
-            use_container_width=True,
-            type="primary",
-            key="save_incident_detail",
-        )
-
-    if save_incident:
-
-        updated = update_ticket(
-            ticket_id=int(incident["id"]),
-            status=detail_status,
-            assigned_to=detail_assignee.strip() or "SOC Team",
-            priority=detail_priority,
-            resolution_notes=investigation_notes.strip(),
-        )
-
-        if updated:
-            st.success(
-                f"{selected_incident_number} updated successfully."
-            )
-            st.cache_data.clear()
-            st.rerun()
-        else:
-            st.error("Could not update the incident.")
-
-
-
-
-
-
-show_new_ticket_notification(tickets)
-
-st.markdown(
-    '<div class="section-title">🎫 Incident Ticketing</div>',
-    unsafe_allow_html=True,
-)
-
-ticket_tabs = st.tabs(
-    ["📋 Tickets", "➕ Create Ticket", "🔧 Manage Ticket"]
-)
-
-with ticket_tabs[0]:
-
-    if tickets.empty:
-        st.info("No incident tickets have been created yet.")
-    else:
-
-        status_series = (
-            tickets["status"]
-            .fillna("OPEN")
-            .astype(str)
-            .str.upper()
-        )
-
-        metric_cols = st.columns(4)
-
-        metric_cols[0].metric("Total Tickets", f"{len(tickets):,}")
-        metric_cols[1].metric("Open", int((status_series == "OPEN").sum()))
-        metric_cols[2].metric(
-            "Investigating",
-            int((status_series == "INVESTIGATING").sum()),
-        )
-        metric_cols[3].metric(
-            "Resolved / Closed",
-            int(status_series.isin(["RESOLVED", "CLOSED"]).sum()),
-        )
-
-        display_columns = [
-            "ticket_number",
-            "alert_id",
-            "title",
-            "severity",
-            "priority",
-            "category",
-            "status",
-            "assigned_to",
-            "created_at",
-        ]
-
-        display_columns = [
-            c for c in display_columns if c in tickets.columns
-        ]
-
-        st.dataframe(
-            tickets[display_columns],
-            use_container_width=True,
-            hide_index=True,
-        )
-
-with ticket_tabs[1]:
-
-    if alerts.empty or "id" not in alerts.columns:
-        st.info("No alerts are available for ticket creation.")
-    else:
-
-        working_alerts = alerts.copy()
-
-        working_alerts["id_numeric"] = pd.to_numeric(
-            working_alerts["id"],
-            errors="coerce",
-        )
-
-        working_alerts = working_alerts.dropna(
-            subset=["id_numeric"]
-        )
-
-        if working_alerts.empty:
-            st.info("No valid alerts are available.")
-        else:
-
-            alert_ids = (
-                working_alerts["id_numeric"]
-                .astype(int)
-                .tolist()
-            )
-
-            def alert_label(alert_id):
-                row = working_alerts[
-                    working_alerts["id_numeric"] == alert_id
-                ].iloc[0]
-
-                category = str(
-                    safe_value(
-                        row,
-                        "attack_category",
-                        "SECURITY_EVENT",
-                    )
-                )
-
-                source = str(
-                    safe_value(row, "source_ip", "UNKNOWN")
-                )
-
-                destination = str(
-                    safe_value(row, "destination_ip", "UNKNOWN")
-                )
-
-                return (
-                    f"Alert #{alert_id} | {category} | "
-                    f"{source} → {destination}"
-                )
-
-            selected_alert_id = st.selectbox(
-                "Source Alert",
-                alert_ids[:200],
-                format_func=alert_label,
-                key="ticket_alert_select",
-            )
-
-            selected_alert = working_alerts[
-                working_alerts["id_numeric"] == selected_alert_id
-            ].iloc[0]
-
-            default_severity = str(
-                safe_value(selected_alert, "severity", "LOW")
-            ).upper()
-
-            if default_severity not in ["HIGH", "MEDIUM", "LOW"]:
-                default_severity = "LOW"
-
-            default_category = str(
-                safe_value(
-                    selected_alert,
-                    "attack_category",
-                    "SECURITY_EVENT",
-                )
-            )
-
-            source_ip = str(
-                safe_value(selected_alert, "source_ip", "UNKNOWN")
-            )
-
-            destination_ip = str(
-                safe_value(
-                    selected_alert,
-                    "destination_ip",
-                    "UNKNOWN",
-                )
-            )
-
-            with st.form("create_ticket_form"):
-
-                title = st.text_input(
-                    "Ticket Title",
-                    value=(
-                        f"{default_category} — "
-                        f"{source_ip} → {destination_ip}"
-                    ),
-                )
-
-                description = st.text_area(
-                    "Incident Description",
-                    value=(
-                        "Security event detected by NetOps AI.\n\n"
-                        f"Source: {source_ip}\n"
-                        f"Destination: {destination_ip}\n"
-                        f"Category: {default_category}\n"
-                        f"Risk: {safe_value(selected_alert, 'risk_score', 0)}\n"
-                        f"Confidence: {safe_value(selected_alert, 'confidence', 0)}\n"
-                        f"Evidence: {safe_value(selected_alert, 'evidence', 'No evidence recorded.')}"
-                    ),
-                    height=180,
-                )
-
-                form_cols = st.columns(3)
-
-                with form_cols[0]:
-                    severity = st.selectbox(
-                        "Severity",
-                        ["HIGH", "MEDIUM", "LOW"],
-                        index=["HIGH", "MEDIUM", "LOW"].index(
-                            default_severity
-                        ),
-                    )
-
-                with form_cols[1]:
-                    priority = st.selectbox(
-                        "Priority",
-                        ["P1", "P2", "P3", "P4"],
-                        index={
-                            "HIGH": 0,
-                            "MEDIUM": 1,
-                            "LOW": 2,
-                        }.get(default_severity, 2),
-                    )
-
-                with form_cols[2]:
-                    assigned_to = st.text_input(
-                        "Assigned To",
-                        value="SOC Team",
-                    )
-
-                submitted = st.form_submit_button(
-                    "🎫 Create Incident Ticket",
-                    use_container_width=True,
-                    type="primary",
-                )
-
-            if submitted:
-
-                if not title.strip():
-                    st.error("Ticket title is required.")
-                else:
-
-                    result = create_ticket(
-                        alert_id=int(selected_alert_id),
-                        title=title.strip(),
-                        description=description.strip(),
-                        severity=severity,
-                        priority=priority,
-                        category=default_category,
-                        assigned_to=assigned_to.strip() or "SOC Team",
-                    )
-
-                    if result.get("created"):
-                        st.success(
-                            f"Ticket {result['ticket_number']} created successfully."
-                        )
-                        st.cache_data.clear()
-                        st.rerun()
-
-                    elif result.get("duplicate"):
-                        st.warning(
-                            f"This alert already has ticket "
-                            f"{result['ticket_number']} "
-                            f"({result['status']})."
-                        )
-
-                    else:
-                        st.error("Ticket could not be created.")
-
-with ticket_tabs[2]:
-
-    if tickets.empty:
-        st.info("No tickets available to manage.")
-    else:
-
-        ticket_numbers = (
-            tickets["ticket_number"]
-            .dropna()
-            .astype(str)
-            .tolist()
-        )
-
-        selected_ticket_number = st.selectbox(
-            "Select Ticket",
-            ticket_numbers,
-            key="manage_ticket_select",
-        )
-
-        selected_ticket = tickets[
-            tickets["ticket_number"].astype(str)
-            == selected_ticket_number
-        ].iloc[0]
-
-        st.write(
-            f"**{selected_ticket_number}** — "
-            f"{safe_value(selected_ticket, 'title', 'Incident')}"
-        )
-
-        current_status = str(
-            safe_value(selected_ticket, "status", "OPEN")
-        ).upper()
-
-        current_priority = str(
-            safe_value(selected_ticket, "priority", "P3")
-        ).upper()
-
-        manage_cols = st.columns(3)
-
-        with manage_cols[0]:
-            new_status = st.selectbox(
-                "Status",
-                ["OPEN", "INVESTIGATING", "RESOLVED", "CLOSED"],
-                index=(
-                    ["OPEN", "INVESTIGATING", "RESOLVED", "CLOSED"]
-                    .index(current_status)
-                    if current_status
-                    in ["OPEN", "INVESTIGATING", "RESOLVED", "CLOSED"]
-                    else 0
-                ),
-            )
-
-        with manage_cols[1]:
-            new_priority = st.selectbox(
-                "Priority",
-                ["P1", "P2", "P3", "P4"],
-                index=(
-                    ["P1", "P2", "P3", "P4"].index(current_priority)
-                    if current_priority in ["P1", "P2", "P3", "P4"]
-                    else 2
-                ),
-            )
-
-        with manage_cols[2]:
-            new_assignee = st.text_input(
-                "Assigned To",
-                value=str(
-                    safe_value(
-                        selected_ticket,
-                        "assigned_to",
-                        "SOC Team",
-                    )
-                ),
-            )
-
-        resolution_notes = st.text_area(
-            "Resolution / Investigation Notes",
-            value=str(
-                safe_value(
-                    selected_ticket,
-                    "resolution_notes",
-                    "",
-                )
-            ),
-            height=120,
-        )
-
-        if st.button(
-            "💾 Update Ticket",
-            use_container_width=True,
-            key="update_ticket_button",
-        ):
-
-            success = update_ticket(
-                ticket_id=int(selected_ticket["id"]),
-                status=new_status,
-                assigned_to=new_assignee.strip() or "SOC Team",
-                priority=new_priority,
-                resolution_notes=resolution_notes.strip(),
-            )
-
-            if success:
-                st.success(
-                    f"{selected_ticket_number} updated successfully."
-                )
-                st.cache_data.clear()
-                st.rerun()
-            else:
-                st.error("Ticket update failed.")
-
-
-
-
 st.markdown(
     '<div class="section-title">🌐 Current Network Flow Data</div>',
     unsafe_allow_html=True,
@@ -1702,8 +762,6 @@ else:
         use_container_width=True,
         hide_index=True,
     )
-
-
 
 
 st.markdown(
@@ -1721,8 +779,6 @@ else:
         use_container_width=True,
         hide_index=True,
     )
-
-
 
 
 with st.expander("System Diagnostics"):
@@ -1745,11 +801,8 @@ with st.expander("System Diagnostics"):
             "Prediction File Age": age_text(ml_time),
             "Stored Alerts": alert_count,
             "Unique Alert Keys": unique_keys,
-            "Stored Tickets": len(tickets),
-            "Ticket DB Error": ticket_db_error,
         }
     )
-
 
 
 st.markdown(
@@ -1757,7 +810,7 @@ st.markdown(
     <div class="footer">
         <strong>NetOps AI SOC</strong><br>
         Designed &amp; Developed by <strong>Pritish Ganguly</strong><br>
-        AI • Network Security • Machine Learning • Incident Ticketing
+        AI • Network Security • Machine Learning
         <br><br>
         Live refresh: {REFRESH_SECONDS}s
         • Detection and ML results are displayed from the local pipeline
