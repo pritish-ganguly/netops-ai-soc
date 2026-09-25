@@ -3,29 +3,29 @@ import sqlite3
 from datetime import datetime
 
 
-# ============================================================
-# NETOPS AI SOC DATABASE
-# ============================================================
-#
-# This database layer is compatible with the current dashboard
-# and the existing data/netops_alerts.db database.
-#
-# It:
-#   - creates the required alerts table
-#   - migrates missing columns safely
-#   - calculates/stores risk information supplied by the
-#     detection engine
-#   - prevents duplicate alert keys
-#   - remains compatible with existing alert records
-#
-# ============================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 DATABASE_PATH = "data/netops_alerts.db"
 
 
-# ============================================================
-# DATABASE CONNECTION
-# ============================================================
+
+
+
 
 def get_connection():
     os.makedirs(
@@ -43,9 +43,9 @@ def get_connection():
     return connection
 
 
-# ============================================================
-# REQUIRED ALERT COLUMNS
-# ============================================================
+
+
+
 
 REQUIRED_COLUMNS = {
     "timestamp": "TEXT",
@@ -71,9 +71,9 @@ REQUIRED_COLUMNS = {
 }
 
 
-# ============================================================
-# INITIALIZE / MIGRATE DATABASE
-# ============================================================
+
+
+
 
 def initialize_database():
 
@@ -82,9 +82,9 @@ def initialize_database():
 
     try:
 
-        # ----------------------------------------------------
-        # Create base table if it does not exist
-        # ----------------------------------------------------
+        
+        
+        
 
         cursor.execute(
             """
@@ -137,9 +137,9 @@ def initialize_database():
 
         connection.commit()
 
-        # ----------------------------------------------------
-        # Read existing columns
-        # ----------------------------------------------------
+        
+        
+        
 
         existing_columns = {
             row[1]
@@ -148,9 +148,9 @@ def initialize_database():
             ).fetchall()
         }
 
-        # ----------------------------------------------------
-        # Safely migrate older databases
-        # ----------------------------------------------------
+        
+        
+        
 
         for column, column_type in REQUIRED_COLUMNS.items():
 
@@ -165,9 +165,9 @@ def initialize_database():
 
         connection.commit()
 
-        # ----------------------------------------------------
-        # Indexes
-        # ----------------------------------------------------
+        
+        
+        
 
         cursor.execute(
             """
@@ -221,9 +221,9 @@ def initialize_database():
     initialize_ticketing()
 
 
-# ============================================================
-# ALERT KEY
-# ============================================================
+
+
+
 
 def build_alert_key(alert):
 
@@ -268,9 +268,9 @@ def build_alert_key(alert):
     )
 
 
-# ============================================================
-# NORMALIZE ALERT
-# ============================================================
+
+
+
 
 def normalize_alert(alert):
 
@@ -303,9 +303,9 @@ def normalize_alert(alert):
     return alert
 
 
-# ============================================================
-# SAVE ALERT
-# ============================================================
+
+
+
 
 def save_alert(alert):
 
@@ -316,9 +316,9 @@ def save_alert(alert):
 
     try:
 
-        # ----------------------------------------------------
-        # Check duplicate
-        # ----------------------------------------------------
+        
+        
+        
 
         alert_key = alert.get("alert_key")
 
@@ -343,9 +343,9 @@ def save_alert(alert):
                     "alert_key": alert_key,
                 }
 
-        # ----------------------------------------------------
-        # Insert
-        # ----------------------------------------------------
+        
+        
+        
 
         cursor.execute(
             """
@@ -420,9 +420,9 @@ def save_alert(alert):
         connection.close()
 
 
-# ============================================================
-# BULK SAVE
-# ============================================================
+
+
+
 
 def save_alerts(alerts):
 
@@ -466,9 +466,9 @@ def save_alerts(alerts):
     }
 
 
-# ============================================================
-# DATABASE STATISTICS
-# ============================================================
+
+
+
 
 def get_database_stats():
 
@@ -504,9 +504,9 @@ def get_database_stats():
         connection.close()
 
 
-# ============================================================
-# TICKETING SYSTEM
-# ============================================================
+
+
+
 
 def initialize_ticketing():
 
@@ -745,9 +745,9 @@ def update_ticket(
         connection.close()
 
 
-# ============================================================
-# MAIN
-# ============================================================
+
+
+
 
 if __name__ == "__main__":
 

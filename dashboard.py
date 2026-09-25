@@ -13,9 +13,9 @@ except ImportError:
     AUTO_REFRESH = False
 
 
-# ============================================================
-# NETOPS AI SOC - PRODUCTION DASHBOARD
-# ============================================================
+
+
+
 
 st.set_page_config(
     page_title="NetOps AI SOC",
@@ -44,7 +44,7 @@ STALE_SECONDS = 20
 
 initialize_ticketing()
 
-# Ticket notification state.
+
 if "netops_known_ticket_ids" not in st.session_state:
     st.session_state.netops_known_ticket_ids = None
 
@@ -53,9 +53,9 @@ if "netops_last_ticket_notification" not in st.session_state:
 
 
 
-# ============================================================
-# CSS
-# ============================================================
+
+
+
 
 st.markdown(
     """
@@ -157,9 +157,9 @@ st.markdown(
 )
 
 
-# ============================================================
-# AUTO REFRESH
-# ============================================================
+
+
+
 
 if AUTO_REFRESH:
     st_autorefresh(
@@ -168,9 +168,9 @@ if AUTO_REFRESH:
     )
 
 
-# ============================================================
-# HELPERS
-# ============================================================
+
+
+
 
 def get_mtime(path):
     try:
@@ -351,9 +351,9 @@ def safe_value(row, column, default="UNKNOWN"):
     return value
 
 
-# ============================================================
-# LOAD LIVE DATA
-# ============================================================
+
+
+
 
 flow_status, flow_time = component_status(FLOW_PATH)
 ml_status, ml_time = component_status(PREDICTION_PATH)
@@ -364,9 +364,9 @@ alerts, db_error = load_alert_database(str(DB_PATH))
 tickets, ticket_db_error = load_ticket_database(str(DB_PATH))
 
 
-# ============================================================
-# NEW TICKET NOTIFICATION
-# ============================================================
+
+
+
 
 def show_new_ticket_notification(ticket_df):
 
@@ -388,8 +388,8 @@ def show_new_ticket_notification(ticket_df):
 
     previous_ids = st.session_state.netops_known_ticket_ids
 
-    # First dashboard load establishes the baseline.
-    # Existing tickets do NOT trigger notifications.
+    
+    
     if previous_ids is None:
         st.session_state.netops_known_ticket_ids = current_ids
         return
@@ -488,7 +488,7 @@ def show_new_ticket_notification(ticket_df):
                 unsafe_allow_html=True,
             )
 
-            # Also use Streamlit's native notification/toast.
+            
             try:
                 st.toast(
                     f"🎫 {ticket_number} — New {severity} ticket",
@@ -503,9 +503,9 @@ def show_new_ticket_notification(ticket_df):
 
 
 
-# ============================================================
-# HEADER
-# ============================================================
+
+
+
 
 st.markdown(
     """
@@ -527,9 +527,9 @@ st.caption(
 )
 
 
-# ============================================================
-# SYSTEM STATUS
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">🟢 System Status</div>',
@@ -597,9 +597,9 @@ status_card(
 )
 
 
-# ============================================================
-# OPERATIONS OVERVIEW
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">📡 Operations Overview</div>',
@@ -630,9 +630,9 @@ cols[4].metric("🟠 Medium", f"{medium:,}")
 cols[5].metric("🟢 Low", f"{low:,}")
 
 
-# ============================================================
-# SECURITY SUMMARY
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">🚨 Security Summary</div>',
@@ -654,9 +654,9 @@ summary[2].metric("Average ML Confidence", f"{average_confidence:.2f}")
 summary[3].metric("Active Alerts", f"{alert_count:,}")
 
 
-# ============================================================
-# ANALYTICS
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">📊 Security Analytics</div>',
@@ -779,9 +779,9 @@ with tab4:
         st.info("No ML prediction data available.")
 
 
-# ============================================================
-# ATTACK CATEGORY ANALYSIS
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">🎯 Attack Category Distribution</div>',
@@ -800,8 +800,8 @@ if not alerts.empty and "attack_category" in alerts.columns:
 
     if not category_counts.empty:
 
-        # Compatible with older pandas versions.
-        # Do NOT use reset_index(names=...).
+        
+        
         category_table = category_counts.rename(
             "Alerts"
         ).reset_index()
@@ -833,9 +833,9 @@ else:
     st.info("Attack category information is not available.")
 
 
-# ============================================================
-# RECENT ALERTS
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">🚨 Recent Security Alerts</div>',
@@ -872,9 +872,9 @@ else:
     )
 
 
-# ============================================================
-# INCIDENT INVESTIGATION
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">🔎 Incident Investigation</div>',
@@ -1047,9 +1047,9 @@ def load_incident_alert(alert_id, db_path):
 
 
 
-# ============================================================
-# INCIDENT DETAIL VIEW
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">🔎 Incident Investigation</div>',
@@ -1367,9 +1367,9 @@ else:
             st.error("Could not update the incident.")
 
 
-# ============================================================
-# INCIDENT TICKETING SYSTEM
-# ============================================================
+
+
+
 
 show_new_ticket_notification(tickets)
 
@@ -1723,9 +1723,9 @@ with ticket_tabs[2]:
                 st.error("Ticket update failed.")
 
 
-# ============================================================
-# FLOW DATA
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">🌐 Current Network Flow Data</div>',
@@ -1742,9 +1742,9 @@ else:
     )
 
 
-# ============================================================
-# ML PREDICTIONS
-# ============================================================
+
+
+
 
 st.markdown(
     '<div class="section-title">🤖 Latest ML Predictions</div>',
@@ -1763,9 +1763,9 @@ else:
     )
 
 
-# ============================================================
-# SYSTEM DIAGNOSTICS
-# ============================================================
+
+
+
 
 with st.expander("System Diagnostics"):
 
@@ -1793,9 +1793,9 @@ with st.expander("System Diagnostics"):
     )
 
 
-# ============================================================
-# FOOTER
-# ============================================================
+
+
+
 
 st.markdown(
     f"""
