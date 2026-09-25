@@ -484,8 +484,6 @@ Some areas that could be added in future versions include:
 
 ## License
 
-## License
-
 This project is provided for personal and educational use only.
 
 Distribution, redistribution, commercial use, resale, and incorporation
