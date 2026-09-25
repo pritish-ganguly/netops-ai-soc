@@ -484,9 +484,15 @@ Some areas that could be added in future versions include:
 
 ## License
 
-This project is licensed under the MIT License.
+## License
 
-See the [LICENSE](LICENSE) file for details.
+This project is provided for personal and educational use only.
+
+Distribution, redistribution, commercial use, resale, and incorporation
+into commercial products or services are not permitted without prior
+written permission from the copyright holder.
+
+See the [LICENSE](LICENSE) file for the complete terms.
 
 ---
 
